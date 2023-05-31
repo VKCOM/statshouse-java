@@ -1,4 +1,10 @@
-package com.github.nevgeny;
+// Copyright 2022 V Kontakte LLC
+//
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+package com.github.vkcom;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -46,12 +52,12 @@ public class StatsHouse implements Closeable {
         }
 
         private Metric(String name, String[] tagsNames, String[] tagsValues, int tagsLength, long unixTime, String newTag) {
-                this.name = name;
-                this.tagsNames = tagsNames;
-                this.tagsValues = Arrays.copyOf(tagsValues, tagsLength+1);
-                this.tagsValues[tagsLength] = newTag;
-                this.tagsLength = tagsLength + 1;
-                this.unixTime = unixTime;
+            this.name = name;
+            this.tagsNames = tagsNames;
+            this.tagsValues = Arrays.copyOf(tagsValues, tagsLength + 1);
+            this.tagsValues[tagsLength] = newTag;
+            this.tagsLength = tagsLength + 1;
+            this.unixTime = unixTime;
         }
 
         private Metric(String name, String[] tagsNames, String[] tagsValues, int tagsLength, long unixTime) {
@@ -69,6 +75,7 @@ public class StatsHouse implements Closeable {
         public Metric withTime(long unixTime) {
             return new Metric(name, tagsNames, tagsValues, tagsLength, unixTime);
         }
+
         public void count(double count) {
             StatsHouse.this.transport.writeCount(this, tagsValues, tagsLength, "", count, unixTime);
         }

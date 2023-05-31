@@ -1,4 +1,10 @@
-package com.github.nevgeny;
+// Copyright 2022 V Kontakte LLC
+//
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+package com.github.vkcom;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -11,7 +17,7 @@ import java.nio.charset.CharsetEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 
-import static com.github.nevgeny.StatsHouse.nonEmpty;
+import static com.github.vkcom.StatsHouse.nonEmpty;
 
 class Transport implements Closeable {
 
@@ -72,7 +78,7 @@ class Transport implements Closeable {
     }
 
     synchronized void writeCount(StatsHouse.Metric metric, String[] tags, int tagsLength, String skey, double count, long ts) {
-        writeHeader(counterFieldsMask | newSemanticFieldsMask, metric, tags,  tagsLength, skey, count, ts, 0);
+        writeHeader(counterFieldsMask | newSemanticFieldsMask, metric, tags, tagsLength, skey, count, ts, 0);
         maybeSend(Instant.now());
     }
 
@@ -207,15 +213,16 @@ class Transport implements Closeable {
         return length;
     }
 
-    private void appendString(String s, int bytesLimit){
+    private void appendString(String s, int bytesLimit) {
         var oldPosition = buffer.position();
         encoder.encode(CharBuffer.wrap(s), buffer, true);
         var length = buffer.position() - oldPosition;
         if (length > bytesLimit) {
-            buffer.position(oldPosition+bytesLimit);
+            buffer.position(oldPosition + bytesLimit);
         }
 
     }
+
     private void writeString(String s) {
         int bytesLength = lengthOfString(s);
         if (bytesLength >= maxStringLen) {

@@ -2,9 +2,10 @@ plugins {
     id 'java'
     id 'application'
     id "me.champeau.jmh" version "0.7.1"
+    // TODO add license-gradle-plugin
 }
 
-group 'com.github.nevgeny'
+group 'com.github.vkcom'
 version '1.0-SNAPSHOT'
 
 repositories {
@@ -29,7 +30,7 @@ dependencies {
 }
 
 application {
-    mainClass = 'com.github.nevgeny.Main'
+    mainClass = 'com.github.vkcom.Main'
 }
 test {
     useJUnitPlatform {
