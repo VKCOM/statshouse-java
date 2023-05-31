@@ -1,0 +1,52 @@
+plugins {
+    id 'java'
+    id 'application'
+    id "me.champeau.jmh" version "0.7.1"
+}
+
+group 'com.github.nevgeny'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+ext.junitJupiterVersion = '5.9.1'
+ext.jqwikVersion = '1.7.2'
+
+compileTestJava {
+    options.compilerArgs += '-parameters'
+}
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.2'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.9.2'
+
+    testImplementation "net.jqwik:jqwik:${jqwikVersion}"
+    compileOnly("org.jetbrains:annotations:23.0.0")
+    jmh 'commons-io:commons-io:2.7'
+    jmh 'org.openjdk.jmh:jmh-core:0.9'
+    jmh 'org.openjdk.jmh:jmh-generator-annprocess:0.9'
+}
+
+application {
+    mainClass = 'com.github.nevgeny.Main'
+}
+test {
+    useJUnitPlatform {
+        includeEngines 'jqwik'
+
+        // Or include several Junit engines if you use them
+        // includeEngines 'jqwik', 'junit-jupiter', 'junit-vintage'
+
+        // includeTags 'fast', 'medium'
+        // excludeTags 'slow'
+    }
+
+    include '**/*Properties.class'
+    include '**/*Test.class'
+    include '**/*Tests.class'
+}
+
+jmh {
+    //profilers = ['perf'] // Use profilers to collect additional data. Supported profilers: [cl, comp, gc, stack, perf, perfnorm, perfasm, xperf, xperfasm, hs_cl, hs_comp, hs_gc, hs_rt, hs_thr, async]
+}

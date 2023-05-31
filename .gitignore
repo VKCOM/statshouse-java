@@ -3,3 +3,7 @@
 
 *.swp
 *.o
+
+build/*
+.gradle/*
+out/*
