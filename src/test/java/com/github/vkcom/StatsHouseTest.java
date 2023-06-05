@@ -1,4 +1,4 @@
-// Copyright 2022 V Kontakte LLC
+// Copyright 2023 V Kontakte LLC
 //
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -94,7 +94,8 @@ class StatsHouseTest {
                 .withAction(new CountAction())
                 .withAction(new ValueAction())
                 .withAction(new STopAction())
-                .withAction(new UniqueAction());
+                .withAction(new UniqueAction())
+                .withAction(new FlushAction());
     }
 
     class CountAction implements Action.Independent<StatsHouse> {
@@ -103,7 +104,7 @@ class StatsHouseTest {
             return testCase().map(tc -> Transformer.mutate("count", sh -> {
                 var metric = sh.metric(tc.name);
                 for (int i = 0; i < tc.tagValues.length; i++) {
-                    metric = metric.withTag(tc.tagValues[i]);
+                    metric = metric.tag(tc.tagValues[i]);
                 }
                 metric.count(tc.count);
             }));
@@ -116,7 +117,7 @@ class StatsHouseTest {
             return testCase().map(tc -> Transformer.mutate("count", sh -> {
                 var metric = sh.metric(tc.name);
                 for (int i = 0; i < tc.tagValues.length; i++) {
-                    metric = metric.withTag(tc.tagValues[i]);
+                    metric = metric.tag(tc.tagValues[i]);
                 }
                 metric.values(tc.value);
             }));
@@ -129,9 +130,9 @@ class StatsHouseTest {
             return testCase().map(tc -> Transformer.mutate("count", sh -> {
                 var metric = sh.metric(tc.name);
                 for (int i = 0; i < tc.tagValues.length; i++) {
-                    metric = metric.withTag(tc.tagValues[i]);
+                    metric = metric.tag(tc.tagValues[i]);
                 }
-                metric.stringTop(tc.stringTop);
+                metric.tag(StatsHouse.TAG_STRING_TOP, tc.stringTop);
             }));
         }
     }
@@ -142,10 +143,18 @@ class StatsHouseTest {
             return testCase().map(tc -> Transformer.mutate("count", sh -> {
                 var metric = sh.metric(tc.name);
                 for (int i = 0; i < tc.tagValues.length; i++) {
-                    metric = metric.withTag(tc.tagValues[i]);
+                    metric = metric.tag(tc.tagValues[i]);
                 }
                 metric.unique(tc.uniques);
             }));
+        }
+    }
+
+    class FlushAction implements Action.Independent<StatsHouse> {
+
+        @Override
+        public Arbitrary<Transformer<StatsHouse>> transformer() {
+            return Arbitraries.just(Transformer.mutate("flush", StatsHouse::flush));
         }
     }
 }

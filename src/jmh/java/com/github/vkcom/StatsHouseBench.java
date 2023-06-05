@@ -1,4 +1,4 @@
-// Copyright 2022 V Kontakte LLC
+// Copyright 2023 V Kontakte LLC
 //
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -8,8 +8,6 @@ package com.github.vkcom;
 
 import org.openjdk.jmh.annotations.*;
 
-import java.lang.management.GarbageCollectorMXBean;
-import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
@@ -22,7 +20,10 @@ public class StatsHouseBench {
     @State(Scope.Thread)
     public static class ShState {
         StatsHouse sh;
-        StatsHouse.Metric m;
+        Metric m;
+        Metric empty;
+        Metric emptyUnsafe;
+
 
         {
             try {
@@ -33,21 +34,48 @@ public class StatsHouseBench {
                 throw new RuntimeException(e);
             }
             m = sh.metric("test_jv");
-            m = m.withTag("get");
-            m = m.withTag("test");
+            m = m.tag("get");
+            m = m.tag("test");
+            m = m.tag("test1");
+            m = m.tag("test2");
+            m = m.tag("test3");
+            m = m.tag("test5");
+            empty = sh.metric("test_jv");
         }
     }
 
-    @Benchmark
-    public void InitAndCount(ShState sh) {
+   @Benchmark
+    public void CreateAndInitAndCount(ShState sh) {
         var metric = sh.sh.metric("test_jv");
-        metric = metric.withTag("get");
-        metric = metric.withTag("test");
+        metric = metric.tag("get");
+        metric = metric.tag("test");
+        metric = metric.tag("test1");
+        metric = metric.tag("test2");
+        metric = metric.tag("test3");
+        metric = metric.tag("test5");
         metric.count(1);
     }
 
+   @Benchmark
+    public void CreateAndCount(ShState sh) {
+       countFromInited(sh.sh.metric("test_jv"));
+    }
     @Benchmark
-    public void Count(ShState sh) {
+    public void CreatedInitAndCount(ShState sh) {
+        countFromInited(sh.empty);
+    }
+
+    @Benchmark
+    public void CreatedInitedCount(ShState sh) {
         sh.m.count(1);
+    }
+    private void countFromInited(Metric metric) {
+        metric = metric.tag("get");
+        metric = metric.tag("test");
+        metric = metric.tag("test1");
+        metric = metric.tag("test2");
+        metric = metric.tag("test3");
+        metric = metric.tag("test5");
+        metric.count(1);
     }
 }
