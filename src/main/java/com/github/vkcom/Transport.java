@@ -1,4 +1,4 @@
-// Copyright 2022 V Kontakte LLC
+// Copyright 2023 V Kontakte LLC
 //
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -44,7 +44,7 @@ class Transport implements Closeable {
     private final InetAddress shHost;
     private final int shPort;
 
-    DatagramSocket socket;
+    final DatagramSocket socket;
     private final ByteBuffer buffer;
     private int batchCount;
     private java.time.Instant nextTimeToSend;
@@ -77,17 +77,17 @@ class Transport implements Closeable {
         nextTimeToSend = Instant.now().plusMillis(sendIntervalMs);
     }
 
-    synchronized void writeCount(StatsHouse.Metric metric, String[] tags, int tagsLength, String skey, double count, long ts) {
-        writeHeader(counterFieldsMask | newSemanticFieldsMask, metric, tags, tagsLength, skey, count, ts, 0);
+    synchronized void writeCount(boolean hasEnv, String name, String[] tagsNames, String[] tags, int tagsLength, double count, long ts) {
+        writeHeader(counterFieldsMask | newSemanticFieldsMask, hasEnv,name,tagsNames, tags, tagsLength, count, ts, 0);
         maybeSend(Instant.now());
     }
 
-    synchronized void writeValue(StatsHouse.Metric metric, String[] tags, int tagsLength, String skey, double[] values, long ts) {
+    synchronized void writeValue(boolean hasEnv, String name, String[] tagsNames, String[] tags, int tagsLength, double[] values, long ts) {
         int fieldMask = valueFieldsMask | newSemanticFieldsMask;
         var now = Instant.now();
         for (int i = 0; i < values.length; i++) {
             var needWriteCount = values.length - i;
-            var spaceLeft = writeHeader(fieldMask, metric, tags, tagsLength, skey, 0, ts, tlInt32Size + tlFloat64Size);
+            var spaceLeft = writeHeader(fieldMask, hasEnv,name,tagsNames, tags, tagsLength, 0, ts, tlInt32Size + tlFloat64Size);
             if (spaceLeft < 0) {
                 return;
             }
@@ -103,12 +103,12 @@ class Transport implements Closeable {
         maybeSend(now);
     }
 
-    synchronized void writeUnique(StatsHouse.Metric metric, String[] tags, int tagsLength, String skey, long[] values, long ts) {
+    synchronized void writeUnique(boolean hasEnv, String name, String[] tagsNames, String[] tags, int tagsLength, long[] values, long ts) {
         var fieldMask = uniqueFieldsMask | newSemanticFieldsMask;
         var now = Instant.now();
         for (int i = 0; i < values.length; i++) {
             var needWriteCount = values.length - i;
-            var spaceLeft = writeHeader(fieldMask, metric, tags, tagsLength, skey, 0, ts, tlInt32Size + tlInt64Size);
+            var spaceLeft = writeHeader(fieldMask, hasEnv,name,tagsNames, tags, tagsLength, 0, ts, tlInt32Size + tlInt64Size);
             if (spaceLeft < 0) {
                 return;
             }
@@ -124,9 +124,9 @@ class Transport implements Closeable {
         maybeSend(now);
     }
 
-    private int writeHeader(int fieldMask, StatsHouse.Metric metric, String[] tags, int tagsLength, String skey, double count, long ts, int reservedSpace) {
+    private int writeHeader(int fieldMask, boolean hasEnv, String name, String[] tagsNames, String[] tags, int tagsLength, double count, long ts, int reservedSpace) {
         var position = buffer.position();
-        var isSuccess = writeHeaderData(fieldMask, metric, tags, tagsLength, skey, count, ts);
+        var isSuccess = writeHeaderData(fieldMask, hasEnv, name, tagsNames, tags, tagsLength, count, ts);
         if (!isSuccess) {
             return -1;
         }
@@ -137,7 +137,7 @@ class Transport implements Closeable {
         }
         if (position != batchHeaderLen) {
             send(position);
-            writeHeaderData(fieldMask, metric, tags, tagsLength, skey, count, ts);
+            writeHeaderData(fieldMask, hasEnv,name,tagsNames, tags, tagsLength, count, ts);
             spaceLeft = maxPayloadSize - buffer.position() - reservedSpace;
             if (spaceLeft >= 0) {
                 batchCount++;
@@ -148,27 +148,23 @@ class Transport implements Closeable {
         return -1;
     }
 
-    private boolean writeHeaderData(int fieldMask, StatsHouse.Metric metric, String[] tags, int tagsLength, String skey, double count, long ts) {
+    private boolean writeHeaderData(int fieldMask, boolean hasEnv, String name, String[] tagsNames, String[] tags, int tagsLength, double count, long ts) {
         if (ts != 0) {
             fieldMask |= tsFieldsMask;
         }
         var oldPosition = buffer.position();
         try {
             writeInt(fieldMask);
-            writeString(metric.name);
-            int tagsCount = Math.min(tagsLength, metric.tagsNames.length);
+            writeString(name);
+            int tagsCount = Math.min(tagsLength, tagsNames.length);
             int addTags = 0;
-            if (nonEmpty(skey)) addTags++;
-            if (!metric.hasEnv) addTags++;
+            if (!hasEnv) addTags++;
             writeInt(tagsCount + addTags);
-            if (nonEmpty(skey)) {
-                writeTag("_s", skey);
-            }
-            if (!metric.hasEnv) {
+            if (!hasEnv) {
                 writeTag("0", env);
             }
             for (int i = 0; i < tagsCount; i++) {
-                writeTag(metric.tagsNames[i], tags[i]);
+                writeTag(tagsNames[i], tags[i]);
             }
 
             if ((fieldMask & counterFieldsMask) != 0) {
@@ -205,12 +201,26 @@ class Transport implements Closeable {
         buffer.putLong(v);
     }
 
+    //todo check
+    private static int lengthUTF8(String sequence) {
+        int count = 0;
+        for (int i = 0, len = sequence.length(); i < len; i++) {
+            char ch = sequence.charAt(i);
+            if (ch <= 0x7F) {
+                count++;
+            } else if (ch <= 0x7FF) {
+                count += 2;
+            } else if (Character.isHighSurrogate(ch)) {
+                count += 4;
+                ++i;
+            } else {
+                count += 3;
+            }
+        }
+        return count;
+    }
     private int lengthOfString(String s) {
-        var oldPosition = buffer.position();
-        encoder.encode(CharBuffer.wrap(s), buffer, true);
-        var length = buffer.position() - oldPosition;
-        buffer.position(oldPosition);
-        return length;
+        return lengthUTF8(s);
     }
 
     private void appendString(String s, int bytesLimit) {
@@ -220,7 +230,6 @@ class Transport implements Closeable {
         if (length > bytesLimit) {
             buffer.position(oldPosition + bytesLimit);
         }
-
     }
 
     private void writeString(String s) {
@@ -278,8 +287,12 @@ class Transport implements Closeable {
         }
     }
 
+    synchronized void flush() {
+        send(buffer.position());
+    }
+
     @Override
-    public void close() throws IOException {
+    public synchronized void close() throws IOException {
         send(buffer.position());
         socket.close();
     }
