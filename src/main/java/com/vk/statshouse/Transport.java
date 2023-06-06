@@ -4,11 +4,14 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-package com.github.vkcom;
+package com.vk.statshouse;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.net.*;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.SocketException;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -16,8 +19,6 @@ import java.nio.CharBuffer;
 import java.nio.charset.CharsetEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-
-import static com.github.vkcom.StatsHouse.nonEmpty;
 
 class Transport implements Closeable {
 
@@ -40,12 +41,11 @@ class Transport implements Closeable {
     private static final int maxDatagramSize = 2 * (int) Short.MAX_VALUE;
 
     private static final CharsetEncoder encoder = StandardCharsets.UTF_8.newEncoder();
-    private String env;
+    DatagramSocket socket;
     private final InetAddress shHost;
     private final int shPort;
-
-    final DatagramSocket socket;
     private final ByteBuffer buffer;
+    private final String env;
     private int batchCount;
     private java.time.Instant nextTimeToSend;
 
@@ -70,6 +70,25 @@ class Transport implements Closeable {
         clear();
     }
 
+    //todo check
+    private static int lengthUTF8(String sequence) {
+        int count = 0;
+        for (int i = 0, len = sequence.length(); i < len; i++) {
+            char ch = sequence.charAt(i);
+            if (ch <= 0x7F) {
+                count++;
+            } else if (ch <= 0x7FF) {
+                count += 2;
+            } else if (Character.isHighSurrogate(ch)) {
+                count += 4;
+                ++i;
+            } else {
+                count += 3;
+            }
+        }
+        return count;
+    }
+
     private void clear() {
         buffer.clear();
         buffer.position(batchHeaderLen);
@@ -77,17 +96,17 @@ class Transport implements Closeable {
         nextTimeToSend = Instant.now().plusMillis(sendIntervalMs);
     }
 
-    synchronized void writeCount(boolean hasEnv, String name, String[] tagsNames, String[] tags, int tagsLength, double count, long ts) {
-        writeHeader(counterFieldsMask | newSemanticFieldsMask, hasEnv,name,tagsNames, tags, tagsLength, count, ts, 0);
+    synchronized void writeCount(boolean hasEnv, String name, String[] tagsNames, String[] tags, int tagsLength, double count, long ts) throws IOException {
+        writeHeader(counterFieldsMask | newSemanticFieldsMask, hasEnv, name, tagsNames, tags, tagsLength, count, ts, 0);
         maybeSend(Instant.now());
     }
 
-    synchronized void writeValue(boolean hasEnv, String name, String[] tagsNames, String[] tags, int tagsLength, double[] values, long ts) {
+    synchronized void writeValue(boolean hasEnv, String name, String[] tagsNames, String[] tags, int tagsLength, double[] values, long ts) throws IOException {
         int fieldMask = valueFieldsMask | newSemanticFieldsMask;
         var now = Instant.now();
         for (int i = 0; i < values.length; i++) {
             var needWriteCount = values.length - i;
-            var spaceLeft = writeHeader(fieldMask, hasEnv,name,tagsNames, tags, tagsLength, 0, ts, tlInt32Size + tlFloat64Size);
+            var spaceLeft = writeHeader(fieldMask, hasEnv, name, tagsNames, tags, tagsLength, 0, ts, tlInt32Size + tlFloat64Size);
             if (spaceLeft < 0) {
                 return;
             }
@@ -103,12 +122,12 @@ class Transport implements Closeable {
         maybeSend(now);
     }
 
-    synchronized void writeUnique(boolean hasEnv, String name, String[] tagsNames, String[] tags, int tagsLength, long[] values, long ts) {
+    synchronized void writeUnique(boolean hasEnv, String name, String[] tagsNames, String[] tags, int tagsLength, long[] values, long ts) throws IOException {
         var fieldMask = uniqueFieldsMask | newSemanticFieldsMask;
         var now = Instant.now();
         for (int i = 0; i < values.length; i++) {
             var needWriteCount = values.length - i;
-            var spaceLeft = writeHeader(fieldMask, hasEnv,name,tagsNames, tags, tagsLength, 0, ts, tlInt32Size + tlInt64Size);
+            var spaceLeft = writeHeader(fieldMask, hasEnv, name, tagsNames, tags, tagsLength, 0, ts, tlInt32Size + tlInt64Size);
             if (spaceLeft < 0) {
                 return;
             }
@@ -124,7 +143,7 @@ class Transport implements Closeable {
         maybeSend(now);
     }
 
-    private int writeHeader(int fieldMask, boolean hasEnv, String name, String[] tagsNames, String[] tags, int tagsLength, double count, long ts, int reservedSpace) {
+    private int writeHeader(int fieldMask, boolean hasEnv, String name, String[] tagsNames, String[] tags, int tagsLength, double count, long ts, int reservedSpace) throws IOException {
         var position = buffer.position();
         var isSuccess = writeHeaderData(fieldMask, hasEnv, name, tagsNames, tags, tagsLength, count, ts);
         if (!isSuccess) {
@@ -137,7 +156,7 @@ class Transport implements Closeable {
         }
         if (position != batchHeaderLen) {
             send(position);
-            writeHeaderData(fieldMask, hasEnv,name,tagsNames, tags, tagsLength, count, ts);
+            writeHeaderData(fieldMask, hasEnv, name, tagsNames, tags, tagsLength, count, ts);
             spaceLeft = maxPayloadSize - buffer.position() - reservedSpace;
             if (spaceLeft >= 0) {
                 batchCount++;
@@ -201,24 +220,6 @@ class Transport implements Closeable {
         buffer.putLong(v);
     }
 
-    //todo check
-    private static int lengthUTF8(String sequence) {
-        int count = 0;
-        for (int i = 0, len = sequence.length(); i < len; i++) {
-            char ch = sequence.charAt(i);
-            if (ch <= 0x7F) {
-                count++;
-            } else if (ch <= 0x7FF) {
-                count += 2;
-            } else if (Character.isHighSurrogate(ch)) {
-                count += 4;
-                ++i;
-            } else {
-                count += 3;
-            }
-        }
-        return count;
-    }
     private int lengthOfString(String s) {
         return lengthUTF8(s);
     }
@@ -262,13 +263,13 @@ class Transport implements Closeable {
         writeString(value);
     }
 
-    private void maybeSend(Instant now) {
+    private void maybeSend(Instant now) throws IOException {
         if (now.isAfter(nextTimeToSend)) {
             send(buffer.position());
         }
     }
 
-    private void send(int position) {
+    private void send(int position) throws IOException {
         if (position == batchHeaderLen) {
             return;
         }
@@ -281,13 +282,12 @@ class Transport implements Closeable {
             if (socket != null) {
                 socket.send(new DatagramPacket(buffer.array(), 0, buffer.position(), shHost, shPort));
             }
-        } catch (IOException ignored) {
         } finally {
             clear();
         }
     }
 
-    synchronized void flush() {
+    synchronized void flush() throws IOException {
         send(buffer.position());
     }
 

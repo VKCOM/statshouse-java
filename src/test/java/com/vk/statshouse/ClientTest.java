@@ -4,16 +4,18 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-package com.github.vkcom;
-
-import java.util.*;
+package com.vk.statshouse;
 
 import net.jqwik.api.*;
 import net.jqwik.api.state.Action;
 import net.jqwik.api.state.ActionChain;
 import net.jqwik.api.state.Transformer;
 
-class StatsHouseTest {
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Map;
+
+class ClientTest {
     @Provide
     Arbitrary<String> metricName() {
         return Arbitraries.strings().alpha().numeric().withChars('_').ofMinLength(1);
@@ -61,6 +63,22 @@ class StatsHouseTest {
                                         )))));
     }
 
+    @Property
+    void checkStatsHouse(@ForAll("statsHouseActions") ActionChain<Client> chain) {
+        // TODO add check of receiving
+        chain.run();
+    }
+
+    @Provide
+    Arbitrary<ActionChain<Client>> statsHouseActions() {
+        return ActionChain.startWith(() -> new Client("test"))
+                .withAction(new CountAction())
+                .withAction(new ValueAction())
+                .withAction(new STopAction())
+                .withAction(new UniqueAction())
+                .withAction(new FlushAction());
+    }
+
     static class TestCase {
         String name;
         String[] tagNames;
@@ -81,80 +99,81 @@ class StatsHouseTest {
         }
     }
 
-
-    @Property
-    void checkStatsHouse(@ForAll("statsHouseActions") ActionChain<StatsHouse> chain) {
-        // TODO add check of receiving
-        chain.run();
-    }
-
-    @Provide
-    Arbitrary<ActionChain<StatsHouse>> statsHouseActions() {
-        return ActionChain.startWith(() -> new StatsHouse("test"))
-                .withAction(new CountAction())
-                .withAction(new ValueAction())
-                .withAction(new STopAction())
-                .withAction(new UniqueAction())
-                .withAction(new FlushAction());
-    }
-
-    class CountAction implements Action.Independent<StatsHouse> {
+    class CountAction implements Action.Independent<Client> {
         @Override
-        public Arbitrary<Transformer<StatsHouse>> transformer() {
+        public Arbitrary<Transformer<Client>> transformer() {
             return testCase().map(tc -> Transformer.mutate("count", sh -> {
-                var metric = sh.metric(tc.name);
+                var metric = sh.getMetric(tc.name);
                 for (int i = 0; i < tc.tagValues.length; i++) {
                     metric = metric.tag(tc.tagValues[i]);
                 }
-                metric.count(tc.count);
+                try {
+                    metric.count(tc.count);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
             }));
         }
     }
 
-    class ValueAction implements Action.Independent<StatsHouse> {
+    class ValueAction implements Action.Independent<Client> {
         @Override
-        public Arbitrary<Transformer<StatsHouse>> transformer() {
+        public Arbitrary<Transformer<Client>> transformer() {
             return testCase().map(tc -> Transformer.mutate("count", sh -> {
-                var metric = sh.metric(tc.name);
+                var metric = sh.getMetric(tc.name);
                 for (int i = 0; i < tc.tagValues.length; i++) {
                     metric = metric.tag(tc.tagValues[i]);
                 }
-                metric.values(tc.value);
+                try {
+                    metric.values(tc.value);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
             }));
         }
     }
 
-    class STopAction implements Action.Independent<StatsHouse> {
+    class STopAction implements Action.Independent<Client> {
         @Override
-        public Arbitrary<Transformer<StatsHouse>> transformer() {
+        public Arbitrary<Transformer<Client>> transformer() {
             return testCase().map(tc -> Transformer.mutate("count", sh -> {
-                var metric = sh.metric(tc.name);
+                var metric = sh.getMetric(tc.name);
                 for (int i = 0; i < tc.tagValues.length; i++) {
                     metric = metric.tag(tc.tagValues[i]);
                 }
-                metric.tag(StatsHouse.TAG_STRING_TOP, tc.stringTop);
+                metric.tag(Client.TAG_STRING_TOP, tc.stringTop);
             }));
         }
     }
 
-    class UniqueAction implements Action.Independent<StatsHouse> {
+    class UniqueAction implements Action.Independent<Client> {
         @Override
-        public Arbitrary<Transformer<StatsHouse>> transformer() {
+        public Arbitrary<Transformer<Client>> transformer() {
             return testCase().map(tc -> Transformer.mutate("count", sh -> {
-                var metric = sh.metric(tc.name);
+                var metric = sh.getMetric(tc.name);
                 for (int i = 0; i < tc.tagValues.length; i++) {
                     metric = metric.tag(tc.tagValues[i]);
                 }
-                metric.unique(tc.uniques);
+                try {
+                    metric.uniques(tc.uniques);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
             }));
         }
     }
 
-    class FlushAction implements Action.Independent<StatsHouse> {
+    class FlushAction implements Action.Independent<Client> {
 
         @Override
-        public Arbitrary<Transformer<StatsHouse>> transformer() {
-            return Arbitraries.just(Transformer.mutate("flush", StatsHouse::flush));
+        public Arbitrary<Transformer<Client>> transformer() {
+            return Arbitraries.just(Transformer.mutate("flush", (c) -> {
+                try {
+                    c.flush();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }));
         }
     }
 }

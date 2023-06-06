@@ -5,7 +5,7 @@ plugins {
     // TODO add license-gradle-plugin
 }
 
-group 'com.github.vkcom'
+group 'com.vk'
 version '1.0-SNAPSHOT'
 
 repositories {
@@ -29,18 +29,9 @@ dependencies {
     jmh 'org.openjdk.jmh:jmh-generator-annprocess:0.9'
 }
 
-application {
-    mainClass = 'com.github.vkcom.Main'
-}
 test {
     useJUnitPlatform {
         includeEngines 'jqwik'
-
-        // Or include several Junit engines if you use them
-        // includeEngines 'jqwik', 'junit-jupiter', 'junit-vintage'
-
-        // includeTags 'fast', 'medium'
-        // excludeTags 'slow'
     }
 
     include '**/*Properties.class'
@@ -49,5 +40,5 @@ test {
 }
 
 jmh {
-    //profilers = ['perf'] // Use profilers to collect additional data. Supported profilers: [cl, comp, gc, stack, perf, perfnorm, perfasm, xperf, xperfasm, hs_cl, hs_comp, hs_gc, hs_rt, hs_thr, async]
+   //profilers = ['async:libPath=<path>;event=alloc']
 }
