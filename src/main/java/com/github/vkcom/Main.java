@@ -16,7 +16,7 @@ public class Main {
         var metric = sh.metric("test_jv");
         for (long i = 0; ; i++) {
             //var t = (System.currentTimeMillis()/1000) - 3600;
-            metric.tag("a").tag("a").tag("a").tag("a").tag("a").tag("a").tag("a").tag("a").tag("a").tag("a").tag("a").tag("a").tag("a").count(i);
+            metric.tag("a").tag("a").tag("a").tag("a").tag("a").tag("a").tag("a").value(i);
             //metric.tag("get").tag("test").tag("key", "value").tag(StatsHouse.TAG_STRING_TOP, "abc").count(i);
            // metric.tag("put").tag("test").values(new double[]{i, i});
             //metric.unique(new long[]{1});

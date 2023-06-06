@@ -10,9 +10,10 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.util.Arrays;
 
-public class StatsHouse implements Closeable {
+public class StatsHouse  {
 
     public static final int DEFAULT_PORT = 13337;
     public static final String TAG_STRING_TOP = "_s";
@@ -21,8 +22,8 @@ public class StatsHouse implements Closeable {
     private static final String[] defaultTags = new String[]{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", TAG_STRING_TOP};
     private static final String[] defaultTagsValues = new String[]{};
 
-    public StatsHouse(InetAddress shHost, int shPort, String env) throws SocketException {
-        transport = new Transport(shHost, shPort, env);
+    public StatsHouse(InetAddress shHost, int shPort, String env) throws SocketException, UnknownHostException {
+        transport = new Transport(shHost.getHostAddress(), shPort, env);
     }
 
     StatsHouse(String env) {
@@ -33,14 +34,6 @@ public class StatsHouse implements Closeable {
         return new MetricImpl(name);
     }
 
-    public void flush() {
-        transport.flush();
-    }
-
-    @Override
-    public void close() throws IOException {
-        transport.close();
-    }
 
 
     class MetricImpl implements Metric {
@@ -88,7 +81,7 @@ public class StatsHouse implements Closeable {
 
         @Override
         public Metric tag(String name, String v) {
-            return new MetricImpl(name, tagsNames, tagsValues, tagsLength, unixTime, name, v);
+            return new MetricImpl(this.name, tagsNames, tagsValues, tagsLength, unixTime, name, v);
         }
 
         public Metric time(long unixTime) {
@@ -96,19 +89,32 @@ public class StatsHouse implements Closeable {
         }
 
         public void count(double count) {
-            StatsHouse.this.transport.writeCount(hasEnv, name, tagsNames, tagsValues, tagsLength, count, unixTime);
+            System.out.println(toString());
+            StatsHouse.this.transport.writeCount(this, tagsValues, count, unixTime);
         }
 
         public void value(double value) {
-            StatsHouse.this.transport.writeValue(hasEnv, name, tagsNames, tagsValues, tagsLength, new double[]{value}, unixTime);
+            StatsHouse.this.transport.writeValue(this, tagsValues, new double[]{value}, unixTime);
         }
 
         public void values(double[] values) {
-            StatsHouse.this.transport.writeValue(hasEnv, name, tagsNames, tagsValues, tagsLength, values, unixTime);
+            StatsHouse.this.transport.writeValue(this, tagsValues, values, unixTime);
         }
 
         public void unique(long[] value) {
-            StatsHouse.this.transport.writeUnique(hasEnv, name, tagsNames, tagsValues, tagsLength, value, unixTime);
+            StatsHouse.this.transport.writeUnique(this, tagsValues, value, unixTime);
+        }
+
+        @Override
+        public String toString() {
+            return "MetricImpl{" +
+                    "name='" + name + '\'' +
+                    ", tagsNames=" + Arrays.toString(tagsNames) +
+                    ", tagsValues=" + Arrays.toString(tagsValues) +
+                    ", tagsLength=" + tagsLength +
+                    ", unixTime=" + unixTime +
+                    ", hasEnv=" + hasEnv +
+                    '}';
         }
     }
 

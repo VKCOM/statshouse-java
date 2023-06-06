@@ -94,8 +94,7 @@ class StatsHouseTest {
                 .withAction(new CountAction())
                 .withAction(new ValueAction())
                 .withAction(new STopAction())
-                .withAction(new UniqueAction())
-                .withAction(new FlushAction());
+                .withAction(new UniqueAction());
     }
 
     class CountAction implements Action.Independent<StatsHouse> {
@@ -150,11 +149,5 @@ class StatsHouseTest {
         }
     }
 
-    class FlushAction implements Action.Independent<StatsHouse> {
 
-        @Override
-        public Arbitrary<Transformer<StatsHouse>> transformer() {
-            return Arbitraries.just(Transformer.mutate("flush", StatsHouse::flush));
-        }
-    }
 }
