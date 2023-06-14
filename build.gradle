@@ -1,0 +1,44 @@
+plugins {
+    id 'java'
+    id 'application'
+    id "me.champeau.jmh" version "0.7.1"
+    // TODO add license-gradle-plugin
+}
+
+group 'com.vk'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+ext.junitJupiterVersion = '5.9.1'
+ext.jqwikVersion = '1.7.2'
+
+compileTestJava {
+    options.compilerArgs += '-parameters'
+}
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.2'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.9.2'
+
+    testImplementation "net.jqwik:jqwik:${jqwikVersion}"
+    compileOnly("org.jetbrains:annotations:23.0.0")
+    jmh 'commons-io:commons-io:2.7'
+    jmh 'org.openjdk.jmh:jmh-core:0.9'
+    jmh 'org.openjdk.jmh:jmh-generator-annprocess:0.9'
+}
+
+test {
+    useJUnitPlatform {
+        includeEngines 'jqwik'
+    }
+
+    include '**/*Properties.class'
+    include '**/*Test.class'
+    include '**/*Tests.class'
+}
+
+jmh {
+   //profilers = ['async:libPath=<path>;event=alloc']
+}
