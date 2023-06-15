@@ -17,12 +17,12 @@ public class Client implements Closeable {
     public static final int DEFAULT_PORT = 13337;
     public static final String TAG_STRING_TOP = "_s";
     public static final String TAG_HOST = "_h";
-    private static final String[] defaultTags = new String[]{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15"};
-    private static final String[] defaultTagsValues = new String[]{};
-    private static final String envName = "env";
-    private static final String envNum = "0";
+    private static final String[] DEFAULT_TAGS = new String[]{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15"};
+    private static final String[] DEFAULT_TAGS_VALUES = new String[]{};
+    private static final String ENV_NAME = "env";
+    private static final String ENV_NUM = "0";
 
-    final Transport transport;
+    private final Transport transport;
 
     public Client(InetAddress shHost, int shPort, String env) throws SocketException {
         transport = new Transport(shHost, shPort, env);
@@ -46,18 +46,18 @@ public class Client implements Closeable {
     }
 
 
-    class MetricRefImpl implements MetricRef {
-        final String name;
-        final String[] tagsNames;
-        final String[] tagsValues;
-        final int tagsLength;
-        final long unixTime;
-        final boolean hasEnv;
+    final class MetricRefImpl implements MetricRef {
+        private final String name;
+        private final String[] tagsNames;
+        private final String[] tagsValues;
+        private final int tagsLength;
+        private final long unixTime;
+        private final boolean hasEnv;
 
         private MetricRefImpl(String name) {
             this.name = name;
-            this.tagsValues = defaultTagsValues;
-            this.tagsNames = defaultTags;
+            this.tagsValues = DEFAULT_TAGS_VALUES;
+            this.tagsNames = DEFAULT_TAGS;
             this.tagsLength = 0;
             this.unixTime = 0;
             this.hasEnv = false;
@@ -66,7 +66,7 @@ public class Client implements Closeable {
         private MetricRefImpl(String name, boolean hasEnv, String[] tagsNames, String[] tagsValues, int tagsLength, long unixTime, String newTagName, String newTagValue) {
             this.name = name;
             if (!"".equals(newTagName)) {
-                this.tagsNames = Arrays.copyOf(tagsNames, Math.max(defaultTags.length, tagsLength + 1));
+                this.tagsNames = Arrays.copyOf(tagsNames, Math.max(DEFAULT_TAGS.length, tagsLength + 1));
                 this.tagsNames[tagsLength] = newTagName;
             } else {
                 this.tagsNames = tagsNames;
@@ -75,7 +75,7 @@ public class Client implements Closeable {
             this.tagsValues[tagsLength] = newTagValue;
             this.tagsLength = tagsLength + 1;
             this.unixTime = unixTime;
-            this.hasEnv = hasEnv || envName.equals(newTagName) || envNum.equals(newTagName);
+            this.hasEnv = hasEnv || ENV_NAME.equals(newTagName) || ENV_NUM.equals(newTagName);
         }
 
 
