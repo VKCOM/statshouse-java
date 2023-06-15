@@ -31,6 +31,13 @@ public class StatsHouseBench {
     }
 
     @Benchmark
+    public void CreateAndInitAndCountAndBatchTagsCreate(ShState sh) throws IOException {
+        var metric = sh.sh.getMetric("test_jv");
+        metric = metric.tags("get", "test", "test1", "test2", "test3", "test4", "test5");
+        metric.count(1);
+    }
+
+    @Benchmark
     public void CreateAndCount(ShState sh) throws IOException {
         countFromInited(sh.sh.getMetric("test_jv"));
     }
