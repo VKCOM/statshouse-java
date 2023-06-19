@@ -13,6 +13,8 @@ public interface MetricRef {
 
     MetricRef tag(String name, String v);
 
+    MetricRef tags(String... values);
+
     MetricRef time(long unixTime);
 
     void count(double count) throws IOException;

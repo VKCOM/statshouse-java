@@ -72,11 +72,27 @@ class ClientTest {
     @Provide
     Arbitrary<ActionChain<Client>> statsHouseActions() {
         return ActionChain.startWith(() -> new Client("test"))
-                .withAction(new CountAction())
-                .withAction(new ValueAction())
-                .withAction(new STopAction())
-                .withAction(new UniqueAction())
+                .withAction(new CountAction(false))
+                .withAction(new ValueAction(false))
+                .withAction(new STopAction(false))
+                .withAction(new UniqueAction(false))
                 .withAction(new FlushAction());
+    }
+
+    @Property
+    void checkStatsHouseTagsCopy(@ForAll("statsHouseActionsTagsCopy") ActionChain<Client> chain) {
+        // TODO add check of receiving
+        chain.run();
+    }
+
+    @Provide
+    Arbitrary<ActionChain<Client>> statsHouseActionsTagsCopy() {
+        return ActionChain.startWith(() -> new Client("test"))
+            .withAction(new CountAction(true))
+            .withAction(new ValueAction(true))
+            .withAction(new STopAction(true))
+            .withAction(new UniqueAction(true))
+            .withAction(new FlushAction());
     }
 
     static class TestCase {
@@ -100,12 +116,22 @@ class ClientTest {
     }
 
     class CountAction implements Action.Independent<Client> {
+        boolean tagsBatchCopy;
+
+        public CountAction(boolean tagsBatchCopy) {
+            this.tagsBatchCopy = tagsBatchCopy;
+        }
+
         @Override
         public Arbitrary<Transformer<Client>> transformer() {
             return testCase().map(tc -> Transformer.mutate("count", sh -> {
                 var metric = sh.getMetric(tc.name);
-                for (int i = 0; i < tc.tagValues.length; i++) {
-                    metric = metric.tag(tc.tagValues[i]);
+                if (tagsBatchCopy) {
+                    metric = metric.tags(tc.tagValues);
+                } else {
+                    for (int i = 0; i < tc.tagValues.length; i++) {
+                        metric = metric.tag(tc.tagValues[i]);
+                    }
                 }
                 try {
                     metric.count(tc.count);
@@ -117,12 +143,21 @@ class ClientTest {
     }
 
     class ValueAction implements Action.Independent<Client> {
+        boolean tagsBatchCopy;
+        public ValueAction(boolean tagsBatchCopy) {
+            this.tagsBatchCopy = tagsBatchCopy;
+        }
+
         @Override
         public Arbitrary<Transformer<Client>> transformer() {
             return testCase().map(tc -> Transformer.mutate("count", sh -> {
                 var metric = sh.getMetric(tc.name);
-                for (int i = 0; i < tc.tagValues.length; i++) {
-                    metric = metric.tag(tc.tagValues[i]);
+                if (tagsBatchCopy) {
+                    metric = metric.tags(tc.tagValues);
+                } else {
+                    for (int i = 0; i < tc.tagValues.length; i++) {
+                        metric = metric.tag(tc.tagValues[i]);
+                    }
                 }
                 try {
                     metric.values(tc.value);
@@ -134,12 +169,22 @@ class ClientTest {
     }
 
     class STopAction implements Action.Independent<Client> {
+        boolean tagsBatchCopy;
+
+        public STopAction(boolean tagsBatchCopy) {
+            this.tagsBatchCopy = tagsBatchCopy;
+        }
+
         @Override
         public Arbitrary<Transformer<Client>> transformer() {
             return testCase().map(tc -> Transformer.mutate("count", sh -> {
                 var metric = sh.getMetric(tc.name);
-                for (int i = 0; i < tc.tagValues.length; i++) {
-                    metric = metric.tag(tc.tagValues[i]);
+                if (tagsBatchCopy) {
+                    metric = metric.tags(tc.tagValues);
+                } else {
+                    for (int i = 0; i < tc.tagValues.length; i++) {
+                        metric = metric.tag(tc.tagValues[i]);
+                    }
                 }
                 metric.tag(Client.TAG_STRING_TOP, tc.stringTop);
             }));
@@ -147,12 +192,22 @@ class ClientTest {
     }
 
     class UniqueAction implements Action.Independent<Client> {
+        boolean tagsBatchCopy;
+
+        public UniqueAction(boolean tagsBatchCopy) {
+            this.tagsBatchCopy = tagsBatchCopy;
+        }
+
         @Override
         public Arbitrary<Transformer<Client>> transformer() {
             return testCase().map(tc -> Transformer.mutate("count", sh -> {
                 var metric = sh.getMetric(tc.name);
-                for (int i = 0; i < tc.tagValues.length; i++) {
-                    metric = metric.tag(tc.tagValues[i]);
+                if (tagsBatchCopy) {
+                    metric = metric.tags(tc.tagValues);
+                } else {
+                    for (int i = 0; i < tc.tagValues.length; i++) {
+                        metric = metric.tag(tc.tagValues[i]);
+                    }
                 }
                 try {
                     metric.uniques(tc.uniques);
