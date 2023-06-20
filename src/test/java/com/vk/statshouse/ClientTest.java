@@ -131,7 +131,7 @@ class ClientTest {
     }
 
     class CountAction implements Action.Independent<Client> {
-        boolean tagsBatchCopy;
+        private final boolean tagsBatchCopy;
 
         public CountAction(boolean tagsBatchCopy) {
             this.tagsBatchCopy = tagsBatchCopy;
@@ -158,7 +158,7 @@ class ClientTest {
     }
 
     class ValueAction implements Action.Independent<Client> {
-        boolean tagsBatchCopy;
+        private final boolean tagsBatchCopy;
         public ValueAction(boolean tagsBatchCopy) {
             this.tagsBatchCopy = tagsBatchCopy;
         }
@@ -184,7 +184,7 @@ class ClientTest {
     }
 
     class STopAction implements Action.Independent<Client> {
-        boolean tagsBatchCopy;
+        private final boolean tagsBatchCopy;
 
         public STopAction(boolean tagsBatchCopy) {
             this.tagsBatchCopy = tagsBatchCopy;
@@ -207,7 +207,7 @@ class ClientTest {
     }
 
     class UniqueAction implements Action.Independent<Client> {
-        boolean tagsBatchCopy;
+        private final boolean tagsBatchCopy;
 
         public UniqueAction(boolean tagsBatchCopy) {
             this.tagsBatchCopy = tagsBatchCopy;
