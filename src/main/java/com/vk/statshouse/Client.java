@@ -50,7 +50,6 @@ public class Client implements Closeable {
         private final String name;
         private final String[] tagsNames;
         private final String[] tagsValues;
-        private final int tagsLength;
         private final long unixTime;
         private final boolean hasEnv;
 
@@ -58,67 +57,79 @@ public class Client implements Closeable {
             this.name = name;
             this.tagsValues = DEFAULT_TAGS_VALUES;
             this.tagsNames = DEFAULT_TAGS;
-            this.tagsLength = 0;
             this.unixTime = 0;
             this.hasEnv = false;
         }
 
-        private MetricRefImpl(String name, boolean hasEnv, String[] tagsNames, String[] tagsValues, int tagsLength, long unixTime, String newTagName, String newTagValue) {
+        private MetricRefImpl(String name, boolean hasEnv, String[] tagsNames, String[] tagsValues, long unixTime, String newTagName, String newTagValue) {
             this.name = name;
             if (!"".equals(newTagName)) {
-                this.tagsNames = Arrays.copyOf(tagsNames, Math.max(DEFAULT_TAGS.length, tagsLength + 1));
-                this.tagsNames[tagsLength] = newTagName;
+                this.tagsNames = Arrays.copyOf(tagsNames, Math.max(DEFAULT_TAGS.length, tagsValues.length + 1));
+                this.tagsNames[tagsValues.length] = newTagName;
             } else {
                 this.tagsNames = tagsNames;
             }
-            this.tagsValues = Arrays.copyOf(tagsValues, tagsLength + 1);
-            this.tagsValues[tagsLength] = newTagValue;
-            this.tagsLength = tagsLength + 1;
+            this.tagsValues = Arrays.copyOf(tagsValues, tagsValues.length + 1);
+            this.tagsValues[tagsValues.length] = newTagValue;
             this.unixTime = unixTime;
             this.hasEnv = hasEnv || ENV_NAME.equals(newTagName) || ENV_NUM.equals(newTagName);
         }
 
+        private MetricRefImpl(String name, boolean hasEnv, String[] tagsNames, String[] tagsValues, long unixTime, String... newTags) {
+            this.name = name;
+            this.tagsNames = tagsNames;
+            this.tagsValues = Arrays.copyOf(tagsValues, tagsValues.length + newTags.length);
+            System.arraycopy(newTags, 0, this.tagsValues, tagsValues.length, newTags.length);
+            this.unixTime = unixTime;
+            this.hasEnv = hasEnv;
 
-        private MetricRefImpl(String name, boolean hasEnv, String[] tagsNames, String[] tagsValues, int tagsLength, long unixTime) {
+            assert tagsValues.length <= tagsNames.length;
+        }
+
+
+        private MetricRefImpl(String name, boolean hasEnv, String[] tagsNames, String[] tagsValues, long unixTime) {
             this.name = name;
             this.tagsNames = tagsNames;
             this.tagsValues = tagsValues;
-            this.tagsLength = tagsLength;
             this.unixTime = unixTime;
             this.hasEnv = hasEnv;
         }
 
         public MetricRef tag(String v) {
-            return new MetricRefImpl(name, hasEnv, tagsNames, tagsValues, tagsLength, unixTime, "", v);
+            return new MetricRefImpl(name, hasEnv, tagsNames, tagsValues, unixTime, "", v);
+        }
+
+        public MetricRef tags(String... v) {
+            return new MetricRefImpl(name, hasEnv, tagsNames, tagsValues, unixTime, v);
         }
 
         @Override
         public MetricRef tag(String name, String v) {
-            return new MetricRefImpl(this.name, hasEnv, tagsNames, tagsValues, tagsLength, unixTime, name, v);
+            return new MetricRefImpl(this.name, hasEnv, tagsNames, tagsValues, unixTime, name, v);
         }
 
         public MetricRef time(long unixTime) {
-            return new MetricRefImpl(name, hasEnv, tagsNames, tagsValues, tagsLength, unixTime);
+            return new MetricRefImpl(name, hasEnv, tagsNames, tagsValues, unixTime);
         }
 
         public void count(double count) throws IOException {
-            Client.this.transport.writeCount(hasEnv, name, tagsNames, tagsValues, tagsLength, count, unixTime);
+            Client.this.transport.writeCount(hasEnv, name, tagsNames, tagsValues, count, unixTime);
         }
 
         public void value(double value) throws IOException {
-            Client.this.transport.writeValue(hasEnv, name, tagsNames, tagsValues, tagsLength, new double[]{value}, unixTime);
+            Client.this.transport.writeValue(hasEnv, name, tagsNames, tagsValues, new double[]{value}, unixTime);
         }
 
         public void values(double[] values) throws IOException {
-            Client.this.transport.writeValue(hasEnv, name, tagsNames, tagsValues, tagsLength, values, unixTime);
+            Client.this.transport.writeValue(hasEnv, name, tagsNames, tagsValues, values, unixTime);
         }
 
         public void unique(long value) throws IOException {
-            Client.this.transport.writeUnique(hasEnv, name, tagsNames, tagsValues, tagsLength, new long[]{value}, unixTime);
+            Client.this.transport.writeUnique(hasEnv, name, tagsNames, tagsValues, new long[]{value}, unixTime);
         }
 
         public void uniques(long[] value) throws IOException {
-            Client.this.transport.writeUnique(hasEnv, name, tagsNames, tagsValues, tagsLength, value, unixTime);
+            Client.this.transport.writeUnique(hasEnv, name, tagsNames, tagsValues, value, unixTime);
         }
     }
 }
