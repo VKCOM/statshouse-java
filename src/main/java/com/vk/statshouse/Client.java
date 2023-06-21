@@ -75,12 +75,11 @@ public class Client implements Closeable {
             this.hasEnv = hasEnv || envName.equals(newTagName) || envNum.equals(newTagName);
         }
 
-        private MetricRefImpl(String name, boolean hasEnv, String[] tagsNames, String[] tagsValues, int tagsLength, long unixTime, String... newTags) {
+        private MetricRefImpl(String name, boolean hasEnv, String[] tagsNames, String[] tagsValues, long unixTime, String... newTags) {
             this.name = name;
             this.tagsNames = tagsNames;
-            this.tagsValues = Arrays.copyOf(tagsValues, tagsLength + newTags.length);
-            System.arraycopy(newTags, 0, this.tagsValues, tagsLength, newTags.length);
-            this.tagsLength = this.tagsValues.length;
+            this.tagsValues = Arrays.copyOf(tagsValues, tagsValues.length + newTags.length);
+            System.arraycopy(newTags, 0, this.tagsValues, tagsValues.length, newTags.length);
             this.unixTime = unixTime;
             this.hasEnv = hasEnv;
 
@@ -101,7 +100,7 @@ public class Client implements Closeable {
         }
 
         public MetricRef tags(String... v) {
-            return new MetricRefImpl(name, hasEnv, tagsNames, tagsValues, tagsLength, unixTime, v);
+            return new MetricRefImpl(name, hasEnv, tagsNames, tagsValues, unixTime, v);
         }
 
         @Override
