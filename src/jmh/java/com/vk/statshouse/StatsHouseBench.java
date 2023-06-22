@@ -6,12 +6,15 @@
 
 package com.vk.statshouse;
 
-import org.openjdk.jmh.annotations.*;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.BenchmarkMode;
+import org.openjdk.jmh.annotations.Fork;
+import org.openjdk.jmh.annotations.Mode;
+import org.openjdk.jmh.annotations.OutputTimeUnit;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.State;
 
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.SocketException;
-import java.net.UnknownHostException;
 import java.util.concurrent.TimeUnit;
 
 @BenchmarkMode({Mode.AverageTime})
@@ -19,7 +22,7 @@ import java.util.concurrent.TimeUnit;
 @Fork(1)
 public class StatsHouseBench {
     @Benchmark
-    public void CreateAndInitAndCount(ShState sh) throws IOException {
+    public void createAndInitAndCount(ShState sh) throws IOException {
         var metric = sh.sh.getMetric("test_jv");
         metric = metric.tag("get");
         metric = metric.tag("test");
@@ -31,24 +34,24 @@ public class StatsHouseBench {
     }
 
     @Benchmark
-    public void CreateAndInitAndCountWithBatchTagsCreate(ShState sh) throws IOException {
+    public void createAndInitAndCountWithBatchTagsCreate(ShState sh) throws IOException {
         var metric = sh.sh.getMetric("test_jv");
         metric = metric.tags("get", "test", "test1", "test2", "test3", "test4", "test5");
         metric.count(1);
     }
 
     @Benchmark
-    public void CreateAndCount(ShState sh) throws IOException {
+    public void createAndCount(ShState sh) throws IOException {
         countFromInited(sh.sh.getMetric("test_jv"));
     }
 
     @Benchmark
-    public void CreatedInitAndCount(ShState sh) throws IOException {
+    public void createdInitAndCount(ShState sh) throws IOException {
         countFromInited(sh.empty);
     }
 
     @Benchmark
-    public void CreatedInitedCount(ShState sh) throws IOException {
+    public void createdInitedCount(ShState sh) throws IOException {
         sh.m.count(1);
     }
 
@@ -64,24 +67,20 @@ public class StatsHouseBench {
 
     @State(Scope.Thread)
     public static class ShState {
-        Client sh;
-        MetricRef m;
-        MetricRef empty;
+        final Client sh;
+        final MetricRef m;
+        final MetricRef empty;
 
         {
-            try {
-                sh = new Client(InetAddress.getByName("127.0.0.1"), 65535, "dev");
-            } catch (SocketException | UnknownHostException e) {
-                throw new RuntimeException(e);
-            }
-            sh.transport.socket = null;
-            m = sh.getMetric("test_jv");
+            sh = new Client("dev");
+            MetricRef m = sh.getMetric("test_jv");
             m = m.tag("get");
             m = m.tag("test");
             m = m.tag("test1");
             m = m.tag("test2");
             m = m.tag("test3");
             m = m.tag("test5");
+            this.m = m;
             empty = sh.getMetric("test_jv");
         }
     }

@@ -22,26 +22,26 @@ import java.time.Instant;
 
 class Transport implements Closeable {
 
-    private static final int counterFieldsMask = 1 << 0;
-    private static final int valueFieldsMask = 1 << 1;
-    private static final int uniqueFieldsMask = 1 << 2;
-    private static final int tsFieldsMask = 1 << 4;
-    private static final int newSemanticFieldsMask = 1 << 31;
-    private static final int maxStringLen = 1 << 24;
-    private static final int tinyStringLen = 253;
-    private static final byte bigStringMarker = (byte) 254;
+    private static final int COUNTER_FIELDS_MASK = 1 << 0;
+    private static final int VALUE_FIELDS_MASK = 1 << 1;
+    private static final int UNIQUE_FIELDS_MASK = 1 << 2;
+    private static final int TS_FIELDS_MASK = 1 << 4;
+    private static final int NEW_SEMANTIC_FIELDS_MASK = 1 << 31;
+    private static final int MAX_STRING_LEN = 1 << 24;
+    private static final int TINY_STRING_LEN = 253;
+    private static final byte BIG_STRING_MARKER = (byte) 254;
 
-    private static final int maxPayloadSize = 1232;
-    private static final int tlInt32Size = 4;
-    private static final int tlInt64Size = 8;
-    private static final int tlFloat64Size = 8;
-    private static final int batchHeaderLen = 3 * tlInt32Size;
-    private static final int metricsBatchTag = 0x56580239;
-    private static final long sendIntervalMs = 400;
-    private static final int maxDatagramSize = 2 * (int) Short.MAX_VALUE;
+    private static final int MAX_PAYLOAD_SIZE = 1232;
+    private static final int TL_INT_32_SIZE = 4;
+    private static final int TL_INT_64_SIZE = 8;
+    private static final int TL_FLOAT_64_SIZE = 8;
+    private static final int BATCH_HEADER_LEN = 3 * TL_INT_32_SIZE;
+    private static final int METRICS_BATCH_TAG = 0x56580239;
+    private static final long SEND_INTERVAL_MS = 400;
+    private static final int MAX_DATAGRAM_SIZE = 2 * (int) Short.MAX_VALUE;
 
-    private static final CharsetEncoder encoder = StandardCharsets.UTF_8.newEncoder();
-    DatagramSocket socket;
+    private static final CharsetEncoder CHARSET_ENCODER = StandardCharsets.UTF_8.newEncoder();
+    private final DatagramSocket socket;
     private final InetAddress shHost;
     private final int shPort;
     private final ByteBuffer buffer;
@@ -55,7 +55,7 @@ class Transport implements Closeable {
         socket = new DatagramSocket(0);
         this.shHost = host;
         this.shPort = port;
-        buffer = ByteBuffer.allocate(maxDatagramSize);
+        buffer = ByteBuffer.allocate(MAX_DATAGRAM_SIZE);
         buffer.order(ByteOrder.LITTLE_ENDIAN);
         clear();
     }
@@ -65,7 +65,7 @@ class Transport implements Closeable {
         socket = null;
         shHost = null;
         shPort = 0;
-        buffer = ByteBuffer.allocate(maxDatagramSize);
+        buffer = ByteBuffer.allocate(MAX_DATAGRAM_SIZE);
         buffer.order(ByteOrder.LITTLE_ENDIAN);
         clear();
     }
@@ -91,26 +91,26 @@ class Transport implements Closeable {
 
     private void clear() {
         buffer.clear();
-        buffer.position(batchHeaderLen);
+        buffer.position(BATCH_HEADER_LEN);
         batchCount = 0;
-        nextTimeToSend = Instant.now().plusMillis(sendIntervalMs);
+        nextTimeToSend = Instant.now().plusMillis(SEND_INTERVAL_MS);
     }
 
     synchronized void writeCount(boolean hasEnv, String name, String[] tagsNames, String[] tags, double count, long ts) throws IOException {
-        writeHeader(counterFieldsMask | newSemanticFieldsMask, hasEnv, name, tagsNames, tags, count, ts, 0);
+        writeHeader(COUNTER_FIELDS_MASK | NEW_SEMANTIC_FIELDS_MASK, hasEnv, name, tagsNames, tags, count, ts, 0);
         maybeSend(Instant.now());
     }
 
     synchronized void writeValue(boolean hasEnv, String name, String[] tagsNames, String[] tags, double[] values, long ts) throws IOException {
-        int fieldMask = valueFieldsMask | newSemanticFieldsMask;
+        int fieldMask = VALUE_FIELDS_MASK | NEW_SEMANTIC_FIELDS_MASK;
         var now = Instant.now();
         for (int i = 0; i < values.length; i++) {
             var needWriteCount = values.length - i;
-            var spaceLeft = writeHeader(fieldMask, hasEnv, name, tagsNames, tags, 0, ts, tlInt32Size + tlFloat64Size);
+            var spaceLeft = writeHeader(fieldMask, hasEnv, name, tagsNames, tags, 0, ts, TL_INT_32_SIZE + TL_FLOAT_64_SIZE);
             if (spaceLeft < 0) {
                 return;
             }
-            var writeCount = 1 + spaceLeft / tlFloat64Size;
+            var writeCount = 1 + spaceLeft / TL_FLOAT_64_SIZE;
             if (writeCount > needWriteCount) {
                 writeCount = needWriteCount;
             }
@@ -123,15 +123,15 @@ class Transport implements Closeable {
     }
 
     synchronized void writeUnique(boolean hasEnv, String name, String[] tagsNames, String[] tags, long[] values, long ts) throws IOException {
-        var fieldMask = uniqueFieldsMask | newSemanticFieldsMask;
+        var fieldMask =  UNIQUE_FIELDS_MASK | NEW_SEMANTIC_FIELDS_MASK;
         var now = Instant.now();
         for (int i = 0; i < values.length; i++) {
             var needWriteCount = values.length - i;
-            var spaceLeft = writeHeader(fieldMask, hasEnv, name, tagsNames, tags, 0, ts, tlInt32Size + tlInt64Size);
+            var spaceLeft = writeHeader(fieldMask, hasEnv, name, tagsNames, tags, 0, ts, TL_INT_32_SIZE + TL_INT_64_SIZE);
             if (spaceLeft < 0) {
                 return;
             }
-            var writeCount = 1 + spaceLeft / tlInt64Size;
+            var writeCount = 1 + spaceLeft / TL_INT_64_SIZE;
             if (writeCount > needWriteCount) {
                 writeCount = needWriteCount;
             }
@@ -149,15 +149,15 @@ class Transport implements Closeable {
         if (!isSuccess) {
             return -1;
         }
-        var spaceLeft = maxPayloadSize - buffer.position() - reservedSpace;
+        var spaceLeft = MAX_PAYLOAD_SIZE - buffer.position() - reservedSpace;
         if (spaceLeft >= 0) {
             batchCount++;
             return spaceLeft;
         }
-        if (position != batchHeaderLen) {
+        if (position != BATCH_HEADER_LEN) {
             send(position);
             writeHeaderData(fieldMask, hasEnv, name, tagsNames, tags, count, ts);
-            spaceLeft = maxPayloadSize - buffer.position() - reservedSpace;
+            spaceLeft = MAX_PAYLOAD_SIZE - buffer.position() - reservedSpace;
             if (spaceLeft >= 0) {
                 batchCount++;
                 return spaceLeft;
@@ -169,7 +169,7 @@ class Transport implements Closeable {
 
     private boolean writeHeaderData(int fieldMask, boolean hasEnv, String name, String[] tagsNames, String[] tags, double count, long ts) {
         if (ts != 0) {
-            fieldMask |= tsFieldsMask;
+            fieldMask |= TS_FIELDS_MASK;
         }
         var oldPosition = buffer.position();
         try {
@@ -177,7 +177,9 @@ class Transport implements Closeable {
             writeString(name);
             int tagsCount = Math.min(tags.length, tagsNames.length);
             int addTags = 0;
-            if (!hasEnv) addTags++;
+            if (!hasEnv) {
+                addTags++;
+            }
             writeInt(tagsCount + addTags);
             if (!hasEnv) {
                 writeTag("0", env);
@@ -186,11 +188,11 @@ class Transport implements Closeable {
                 writeTag(tagsNames[i], tags[i]);
             }
 
-            if ((fieldMask & counterFieldsMask) != 0) {
+            if ((fieldMask & COUNTER_FIELDS_MASK) != 0) {
                 writeDouble(count);
             }
 
-            if ((fieldMask & tsFieldsMask) != 0) {
+            if ((fieldMask & TS_FIELDS_MASK) != 0) {
                 writeUint32(ts);
             }
         } catch (BufferOverflowException ex) {
@@ -226,7 +228,7 @@ class Transport implements Closeable {
 
     private void appendString(String s, int bytesLimit) {
         var oldPosition = buffer.position();
-        encoder.encode(CharBuffer.wrap(s), buffer, true);
+        CHARSET_ENCODER.encode(CharBuffer.wrap(s), buffer, true);
         var length = buffer.position() - oldPosition;
         if (length > bytesLimit) {
             buffer.position(oldPosition + bytesLimit);
@@ -235,14 +237,14 @@ class Transport implements Closeable {
 
     private void writeString(String s) {
         int bytesLength = lengthOfString(s);
-        if (bytesLength >= maxStringLen) {
-            bytesLength = maxStringLen - 1;
+        if (bytesLength >= MAX_STRING_LEN) {
+            bytesLength = MAX_STRING_LEN - 1;
         }
-        if (bytesLength <= tinyStringLen) {
+        if (bytesLength <= TINY_STRING_LEN) {
             buffer.put((byte) bytesLength);
             bytesLength++;
         } else {
-            buffer.put(bigStringMarker);
+            buffer.put(BIG_STRING_MARKER);
             buffer.put((byte) bytesLength);
             buffer.put((byte) (bytesLength >> 8));
             buffer.put((byte) (bytesLength >> 16));
@@ -270,11 +272,11 @@ class Transport implements Closeable {
     }
 
     private void send(int position) throws IOException {
-        if (position == batchHeaderLen) {
+        if (position == BATCH_HEADER_LEN) {
             return;
         }
         buffer.position(0);
-        writeInt(metricsBatchTag);
+        writeInt(METRICS_BATCH_TAG);
         writeInt(0);
         writeInt(batchCount);
         buffer.position(position);

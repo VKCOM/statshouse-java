@@ -6,7 +6,11 @@
 
 package com.vk.statshouse;
 
-import net.jqwik.api.*;
+import net.jqwik.api.Arbitraries;
+import net.jqwik.api.Arbitrary;
+import net.jqwik.api.ForAll;
+import net.jqwik.api.Property;
+import net.jqwik.api.Provide;
 import net.jqwik.api.state.Action;
 import net.jqwik.api.state.ActionChain;
 import net.jqwik.api.state.Transformer;
@@ -50,17 +54,28 @@ class ClientTest {
                                 values().flatMap(values ->
                                         metricName().flatMap(strTop ->
                                                 uniques().map(uniques -> {
-                                                    var tagNames = new String[tags.length];
-                                                    var tagValues = new String[tags.length];
-
-                                                    for (int i = 0; i < tags.length; i++) {
-                                                        var entry = (Map.Entry<String, String>) tags[i];
-                                                        tagNames[i] = entry.getKey();
-                                                        tagValues[i] = entry.getValue();
-                                                    }
-                                                    return new TestCase(name, tagNames, tagValues, count, Arrays.stream(values).mapToDouble(Double::doubleValue).toArray(), strTop, Arrays.stream(uniques).mapToLong(Long::longValue).toArray());
+                                                    return getTestCase(name, tags, count, values, strTop, uniques);
                                                 })
                                         )))));
+    }
+
+    private static TestCase getTestCase(String name, Object[] tags, Double count, Double[] values, String strTop, Long[] uniques) {
+        var tagNames = new String[tags.length];
+        var tagValues = new String[tags.length];
+
+        for (int i = 0; i < tags.length; i++) {
+            var entry = (Map.Entry<String, String>) tags[i];
+            tagNames[i] = entry.getKey();
+            tagValues[i] = entry.getValue();
+        }
+        return new TestCase(name,
+            tagNames,
+            tagValues,
+            count,
+            Arrays.stream(values).mapToDouble(Double::doubleValue).toArray(),
+            strTop,
+            Arrays.stream(uniques).mapToLong(Long::longValue).toArray()
+        );
     }
 
     @Property
@@ -96,13 +111,13 @@ class ClientTest {
     }
 
     static class TestCase {
-        String name;
-        String[] tagNames;
-        String[] tagValues;
-        double count;
-        double[] value;
-        String stringTop;
-        long[] uniques;
+        final String name;
+        final String[] tagNames;
+        final String[] tagValues;
+        final double count;
+        final double[] value;
+        final String stringTop;
+        final long[] uniques;
 
         public TestCase(String name, String[] tagNames, String[] tagValues, double count, double[] value, String stringTop, long[] uniques) {
             this.name = name;
@@ -116,7 +131,7 @@ class ClientTest {
     }
 
     class CountAction implements Action.Independent<Client> {
-        boolean tagsBatchCopy;
+        private final boolean tagsBatchCopy;
 
         public CountAction(boolean tagsBatchCopy) {
             this.tagsBatchCopy = tagsBatchCopy;
@@ -143,7 +158,7 @@ class ClientTest {
     }
 
     class ValueAction implements Action.Independent<Client> {
-        boolean tagsBatchCopy;
+        private final boolean tagsBatchCopy;
         public ValueAction(boolean tagsBatchCopy) {
             this.tagsBatchCopy = tagsBatchCopy;
         }
@@ -169,7 +184,7 @@ class ClientTest {
     }
 
     class STopAction implements Action.Independent<Client> {
-        boolean tagsBatchCopy;
+        private final boolean tagsBatchCopy;
 
         public STopAction(boolean tagsBatchCopy) {
             this.tagsBatchCopy = tagsBatchCopy;
@@ -192,7 +207,7 @@ class ClientTest {
     }
 
     class UniqueAction implements Action.Independent<Client> {
-        boolean tagsBatchCopy;
+        private final boolean tagsBatchCopy;
 
         public UniqueAction(boolean tagsBatchCopy) {
             this.tagsBatchCopy = tagsBatchCopy;
