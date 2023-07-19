@@ -15,6 +15,10 @@ public interface MetricRef {
 
     MetricRef tags(String... values);
 
+    /**
+     * дополнительные теги, чтобы не сбивать оригинальную последовательность тегов "1,2,3.."
+     * @param v - значения прописанные тут будут отправлены как теги p0=v[0], p1=v[1] ...
+     */
     MetricRef addParams(String... v);
 
     MetricRef time(long unixTime);
