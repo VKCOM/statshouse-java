@@ -96,17 +96,17 @@ class Transport implements Closeable {
         nextTimeToSend = Instant.now().plusMillis(SEND_INTERVAL_MS);
     }
 
-    synchronized void writeCount(boolean hasEnv, String name, String[] tagsNames, String[] tags, double count, long ts) throws IOException {
-        writeHeader(COUNTER_FIELDS_MASK | NEW_SEMANTIC_FIELDS_MASK, hasEnv, name, tagsNames, tags, count, ts, 0);
+    synchronized void writeCount(boolean hasEnv, String[] params, String name, String[] tagsNames, String[] tags, double count, long ts) throws IOException {
+        writeHeader(COUNTER_FIELDS_MASK | NEW_SEMANTIC_FIELDS_MASK, hasEnv, params, name, tagsNames, tags, count, ts, 0);
         maybeSend(Instant.now());
     }
 
-    synchronized void writeValue(boolean hasEnv, String name, String[] tagsNames, String[] tags, double[] values, long ts) throws IOException {
+    synchronized void writeValue(boolean hasEnv, String[] params, String name, String[] tagsNames, String[] tags, double[] values, long ts) throws IOException {
         int fieldMask = VALUE_FIELDS_MASK | NEW_SEMANTIC_FIELDS_MASK;
         var now = Instant.now();
         for (int i = 0; i < values.length; i++) {
             var needWriteCount = values.length - i;
-            var spaceLeft = writeHeader(fieldMask, hasEnv, name, tagsNames, tags, 0, ts, TL_INT_32_SIZE + TL_FLOAT_64_SIZE);
+            var spaceLeft = writeHeader(fieldMask, hasEnv, params, name, tagsNames, tags, 0, ts, TL_INT_32_SIZE + TL_FLOAT_64_SIZE);
             if (spaceLeft < 0) {
                 return;
             }
@@ -122,12 +122,12 @@ class Transport implements Closeable {
         maybeSend(now);
     }
 
-    synchronized void writeUnique(boolean hasEnv, String name, String[] tagsNames, String[] tags, long[] values, long ts) throws IOException {
+    synchronized void writeUnique(boolean hasEnv, String[] params, String name, String[] tagsNames, String[] tags, long[] values, long ts) throws IOException {
         var fieldMask =  UNIQUE_FIELDS_MASK | NEW_SEMANTIC_FIELDS_MASK;
         var now = Instant.now();
         for (int i = 0; i < values.length; i++) {
             var needWriteCount = values.length - i;
-            var spaceLeft = writeHeader(fieldMask, hasEnv, name, tagsNames, tags, 0, ts, TL_INT_32_SIZE + TL_INT_64_SIZE);
+            var spaceLeft = writeHeader(fieldMask, hasEnv, params, name, tagsNames, tags, 0, ts, TL_INT_32_SIZE + TL_INT_64_SIZE);
             if (spaceLeft < 0) {
                 return;
             }
@@ -143,9 +143,9 @@ class Transport implements Closeable {
         maybeSend(now);
     }
 
-    private int writeHeader(int fieldMask, boolean hasEnv, String name, String[] tagsNames, String[] tags, double count, long ts, int reservedSpace) throws IOException {
+    private int writeHeader(int fieldMask, boolean hasEnv, String[] params, String name, String[] tagsNames, String[] tags, double count, long ts, int reservedSpace) throws IOException {
         var position = buffer.position();
-        var isSuccess = writeHeaderData(fieldMask, hasEnv, name, tagsNames, tags, count, ts);
+        var isSuccess = writeHeaderData(fieldMask, hasEnv, params, name, tagsNames, tags, count, ts);
         if (!isSuccess) {
             return -1;
         }
@@ -156,7 +156,7 @@ class Transport implements Closeable {
         }
         if (position != BATCH_HEADER_LEN) {
             send(position);
-            writeHeaderData(fieldMask, hasEnv, name, tagsNames, tags, count, ts);
+            writeHeaderData(fieldMask, hasEnv, params, name, tagsNames, tags, count, ts);
             spaceLeft = MAX_PAYLOAD_SIZE - buffer.position() - reservedSpace;
             if (spaceLeft >= 0) {
                 batchCount++;
@@ -167,7 +167,7 @@ class Transport implements Closeable {
         return -1;
     }
 
-    private boolean writeHeaderData(int fieldMask, boolean hasEnv, String name, String[] tagsNames, String[] tags, double count, long ts) {
+    private boolean writeHeaderData(int fieldMask, boolean hasEnv, String[] params, String name, String[] tagsNames, String[] tags, double count, long ts) {
         if (ts != 0) {
             fieldMask |= TS_FIELDS_MASK;
         }
@@ -180,10 +180,16 @@ class Transport implements Closeable {
             if (!hasEnv) {
                 addTags++;
             }
+            addTags += params.length;
             writeInt(tagsCount + addTags);
             if (!hasEnv) {
                 writeTag("0", env);
             }
+
+            for (int i = 0; i < params.length; i++) {
+                writeTag("p" + i, params[i]);
+            }
+
             for (int i = 0; i < tagsCount; i++) {
                 writeTag(tagsNames[i], tags[i]);
             }

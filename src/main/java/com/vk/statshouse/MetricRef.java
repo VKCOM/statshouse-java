@@ -15,6 +15,8 @@ public interface MetricRef {
 
     MetricRef tags(String... values);
 
+    MetricRef addParams(String... v);
+
     MetricRef time(long unixTime);
 
     void count(double count) throws IOException;

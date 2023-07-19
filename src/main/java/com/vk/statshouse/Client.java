@@ -18,7 +18,7 @@ public class Client implements Closeable {
     public static final String TAG_STRING_TOP = "_s";
     public static final String TAG_HOST = "_h";
     private static final String[] DEFAULT_TAGS = new String[]{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15"};
-    private static final String[] DEFAULT_TAGS_VALUES = new String[]{};
+    private static final String[] EMPTY_ARRAY = new String[]{};
     private static final String ENV_NAME = "env";
     private static final String ENV_NUM = "0";
 
@@ -52,16 +52,18 @@ public class Client implements Closeable {
         private final String[] tagsValues;
         private final long unixTime;
         private final boolean hasEnv;
+        private final String[] params;
 
         private MetricRefImpl(String name) {
             this.name = name;
-            this.tagsValues = DEFAULT_TAGS_VALUES;
+            this.tagsValues = EMPTY_ARRAY;
             this.tagsNames = DEFAULT_TAGS;
             this.unixTime = 0;
             this.hasEnv = false;
+            this.params = EMPTY_ARRAY;
         }
 
-        private MetricRefImpl(String name, boolean hasEnv, String[] tagsNames, String[] tagsValues, long unixTime, String newTagName, String newTagValue) {
+        private MetricRefImpl(String name, boolean hasEnv, String[] params, String[] tagsNames, String[] tagsValues, long unixTime, String newTagName, String newTagValue) {
             this.name = name;
             if (!"".equals(newTagName)) {
                 this.tagsNames = Arrays.copyOf(tagsNames, Math.max(DEFAULT_TAGS.length, tagsValues.length + 1));
@@ -73,63 +75,97 @@ public class Client implements Closeable {
             this.tagsValues[tagsValues.length] = newTagValue;
             this.unixTime = unixTime;
             this.hasEnv = hasEnv || ENV_NAME.equals(newTagName) || ENV_NUM.equals(newTagName);
+            this.params = params;
         }
 
-        private MetricRefImpl(String name, boolean hasEnv, String[] tagsNames, String[] tagsValues, long unixTime, String... newTags) {
+        private MetricRefImpl(String name, boolean hasEnv, String[] params, String[] tagsNames, String[] tagsValues, long unixTime, String... newTags) {
             this.name = name;
             this.tagsNames = tagsNames;
             this.tagsValues = Arrays.copyOf(tagsValues, tagsValues.length + newTags.length);
             System.arraycopy(newTags, 0, this.tagsValues, tagsValues.length, newTags.length);
             this.unixTime = unixTime;
             this.hasEnv = hasEnv;
+            this.params = params;
 
             assert tagsValues.length <= tagsNames.length;
         }
 
 
-        private MetricRefImpl(String name, boolean hasEnv, String[] tagsNames, String[] tagsValues, long unixTime) {
+        private MetricRefImpl(String name, boolean hasEnv, String[] params, String[] tagsNames, String[] tagsValues, long unixTime) {
             this.name = name;
             this.tagsNames = tagsNames;
             this.tagsValues = tagsValues;
             this.unixTime = unixTime;
             this.hasEnv = hasEnv;
+            this.params = params;
         }
 
         public MetricRef tag(String v) {
-            return new MetricRefImpl(name, hasEnv, tagsNames, tagsValues, unixTime, "", v);
+            return new MetricRefImpl(name, hasEnv, this.params, tagsNames, tagsValues, unixTime, "", v);
         }
 
         public MetricRef tags(String... v) {
-            return new MetricRefImpl(name, hasEnv, tagsNames, tagsValues, unixTime, v);
+            return new MetricRefImpl(name, hasEnv, this.params, tagsNames, tagsValues, unixTime, v);
         }
 
         @Override
         public MetricRef tag(String name, String v) {
-            return new MetricRefImpl(this.name, hasEnv, tagsNames, tagsValues, unixTime, name, v);
+            return new MetricRefImpl(this.name, hasEnv, this.params, tagsNames, tagsValues, unixTime, name, v);
+        }
+
+        @Override
+        public MetricRef addParams(String... v) {
+            String[] newParams = Arrays.copyOf(this.params, this.params.length + v.length);
+            System.arraycopy(v, 0, newParams, this.params.length, v.length);
+            return new MetricRefImpl(this.name, hasEnv, newParams, tagsNames, tagsValues, unixTime);
         }
 
         public MetricRef time(long unixTime) {
-            return new MetricRefImpl(name, hasEnv, tagsNames, tagsValues, unixTime);
+            return new MetricRefImpl(name, hasEnv, this.params, tagsNames, tagsValues, unixTime);
         }
 
         public void count(double count) throws IOException {
-            Client.this.transport.writeCount(hasEnv, name, tagsNames, tagsValues, count, unixTime);
+            Client.this.transport.writeCount(hasEnv, this.params, name, tagsNames, tagsValues, count, unixTime);
         }
 
         public void value(double value) throws IOException {
-            Client.this.transport.writeValue(hasEnv, name, tagsNames, tagsValues, new double[]{value}, unixTime);
+            Client.this.transport.writeValue(hasEnv, this.params, name, tagsNames, tagsValues, new double[]{value}, unixTime);
         }
 
         public void values(double[] values) throws IOException {
-            Client.this.transport.writeValue(hasEnv, name, tagsNames, tagsValues, values, unixTime);
+            Client.this.transport.writeValue(hasEnv, this.params, name, tagsNames, tagsValues, values, unixTime);
         }
 
         public void unique(long value) throws IOException {
-            Client.this.transport.writeUnique(hasEnv, name, tagsNames, tagsValues, new long[]{value}, unixTime);
+            Client.this.transport.writeUnique(hasEnv, this.params, name, tagsNames, tagsValues, new long[]{value}, unixTime);
         }
 
         public void uniques(long[] value) throws IOException {
-            Client.this.transport.writeUnique(hasEnv, name, tagsNames, tagsValues, value, unixTime);
+            Client.this.transport.writeUnique(hasEnv, this.params, name, tagsNames, tagsValues, value, unixTime);
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public String[] getTagsNames() {
+            return tagsNames;
+        }
+
+        public String[] getTagsValues() {
+            return tagsValues;
+        }
+
+        public long getUnixTime() {
+            return unixTime;
+        }
+
+        public boolean isHasEnv() {
+            return hasEnv;
+        }
+
+        public String[] getParams() {
+            return params;
         }
     }
 }
