@@ -104,7 +104,7 @@ class Transport implements Closeable {
     synchronized void writeValue(boolean hasEnv, String name, String[] tagsNames, String[] tags, double[] values, long ts) throws IOException {
         int fieldMask = VALUE_FIELDS_MASK | NEW_SEMANTIC_FIELDS_MASK;
         var now = Instant.now();
-        for (int i = 0; i < values.length; i++) {
+        for (int i = 0; i < values.length;) {
             var needWriteCount = values.length - i;
             var spaceLeft = writeHeader(fieldMask, hasEnv, name, tagsNames, tags, 0, ts, TL_INT_32_SIZE + TL_FLOAT_64_SIZE);
             if (spaceLeft < 0) {
@@ -125,7 +125,7 @@ class Transport implements Closeable {
     synchronized void writeUnique(boolean hasEnv, String name, String[] tagsNames, String[] tags, long[] values, long ts) throws IOException {
         var fieldMask =  UNIQUE_FIELDS_MASK | NEW_SEMANTIC_FIELDS_MASK;
         var now = Instant.now();
-        for (int i = 0; i < values.length; i++) {
+        for (int i = 0; i < values.length;) {
             var needWriteCount = values.length - i;
             var spaceLeft = writeHeader(fieldMask, hasEnv, name, tagsNames, tags, 0, ts, TL_INT_32_SIZE + TL_INT_64_SIZE);
             if (spaceLeft < 0) {
