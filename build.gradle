@@ -38,6 +38,10 @@ test {
     include '**/*Properties.class'
     include '**/*Test.class'
     include '**/*Tests.class'
+
+    exec {
+        commandLine "go", "run", "github.com/vkcom/statshouse/cmd/statshouse-client-test@master"
+    }
 }
 
 jmh {
