@@ -17,7 +17,11 @@ public class Client implements Closeable {
     public static final int DEFAULT_PORT = 13337;
     public static final String TAG_STRING_TOP = "_s";
     public static final String TAG_HOST = "_h";
-    private static final String[] DEFAULT_TAGS = new String[]{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15"};
+    private static final String[] DEFAULT_TAGS = new String[]{
+        "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15",
+        "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30",
+        "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46"
+    };
     private static final String[] DEFAULT_TAGS_VALUES = new String[]{};
     private static final String ENV_NAME = "env";
     private static final String ENV_NUM = "0";
